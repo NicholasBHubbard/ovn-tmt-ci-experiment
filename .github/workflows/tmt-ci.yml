@@ -1,0 +1,81 @@
+name: tmt CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  compile-macos:
+    name: compile-macos
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out OVN
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: brew install automake libtool
+
+      - name: Build OVS
+        run: |
+          cd ovs
+          ./boot.sh
+          ./configure --disable-ssl
+          make -j$(sysctl -n hw.ncpu)
+
+      - name: Build OVN
+        run: |
+          ./boot.sh
+          ./configure --disable-ssl
+          make -j$(sysctl -n hw.ncpu)
+
+  test:
+    name: ${{ matrix.plan }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        plan:
+          - compile-gcc
+          - compile-clang
+          - unit-gcc
+          - unit-clang
+          - unit-clang-asan
+          - unit-gcc-jemalloc
+          - distcheck-gcc
+          - system-gcc
+          - system-clang-asan
+          - system-userspace-gcc
+          - system-dpdk-gcc
+    steps:
+      - name: Clone test infrastructure
+        uses: actions/checkout@v5
+        with:
+          repository: NicholasBHubbard/ovn-tmt-tests
+          path: test-infra
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman qemu-system-x86 \
+            libvirt-daemon-system libvirt-dev pkg-config genisoimage ansible-core
+          ansible-galaxy collection install ansible.posix community.general
+          pipx install 'tmt[provision-container,provision-virtual]'
+
+      - name: Run tmt
+        working-directory: test-infra
+        run: >-
+          sudo env PATH="$PATH"
+          tmt run --all
+          -e OVN_GIT_REPO=${{ github.server_url }}/${{ github.repository }}.git
+          -e OVN_GIT_VERSION=${{ github.event.pull_request.head.sha || github.sha }}
+          plan --name '/plans/ovn-ci/${{ matrix.plan }}'
+          provision --feeling-safe

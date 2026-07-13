@@ -73,6 +73,7 @@ jobs:
         run: >-
           sudo env PATH="$PATH"
           tmt run --all
+          -e PATH="$PATH"
           -e OVN_GIT_REPO=${{ github.server_url }}/${{ github.repository }}.git
           -e OVN_GIT_VERSION=${{ github.event.pull_request.head.sha || github.sha }}
           plan --name '/plans/ovn-ci/${{ matrix.plan }}'

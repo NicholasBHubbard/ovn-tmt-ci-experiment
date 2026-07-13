@@ -1,9 +1,6 @@
 name: OVN Upgrade Tests
 
 on:
-  schedule:
-    # Run Tuesday at midnight
-    - cron: '0 0 * * 2'
   workflow_dispatch:
 
 concurrency:

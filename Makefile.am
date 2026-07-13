@@ -85,6 +85,7 @@ EXTRA_DIST = \
 	.github/workflows/ovn-kubernetes.yml \
 	.github/workflows/ovn-fake-multinode-tests.yml \
 	.github/workflows/ovn-upgrade-tests.yml \
+	.github/workflows/tmt-ci.yml \
 	.readthedocs.yaml \
 	boot.sh \
 	$(MAN_FRAGMENTS) \

@@ -43,10 +43,17 @@ jobs:
           PLAN: ${{ inputs.plan }}
         run: >-
           sudo env PATH="$PATH"
-          tmt run --all
+          tmt run --id "$RUNNER_TEMP/tmt-run" --all
           -e PATH="$PATH"
           -e OVN_GIT_REPO="$OVN_GIT_REPO"
           -e OVN_GIT_VERSION="$OVN_GIT_VERSION"
           -e MAKE_CHECK_TESTSUITEFLAGS="$MAKE_CHECK_TESTSUITEFLAGS"
           plan --name "/plans/ovn-ci/$PLAN"
           provision --feeling-safe
+
+      - name: Upload tmt artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmt-${{ inputs.plan }}-${{ inputs.testsuiteflags || 'all' }}
+          path: ${{ runner.temp }}/tmt-run/**/execute/data

@@ -34,47 +34,47 @@ jobs:
           ./configure --disable-ssl
           make -j$(sysctl -n hw.ncpu)
 
-  test:
+  unsharded:
     name: ${{ matrix.plan }}
-    runs-on: ubuntu-26.04
-    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
         plan:
           - compile-gcc
           - compile-clang
+          - distcheck-gcc
+    uses: ./.github/workflows/tmt-run.yml
+    with:
+      plan: ${{ matrix.plan }}
+
+  unit-shards:
+    name: ${{ matrix.plan }} ${{ matrix.testsuiteflags }}
+    strategy:
+      fail-fast: false
+      matrix:
+        plan:
           - unit-gcc
           - unit-clang
           - unit-clang-asan
           - unit-gcc-jemalloc
-          - distcheck-gcc
+        testsuiteflags: ["-300", "301-600", "601-"]
+    uses: ./.github/workflows/tmt-run.yml
+    with:
+      plan: ${{ matrix.plan }}
+      testsuiteflags: ${{ matrix.testsuiteflags }}
+
+  system-shards:
+    name: ${{ matrix.plan }} ${{ matrix.testsuiteflags }}
+    strategy:
+      fail-fast: false
+      matrix:
+        plan:
           - system-gcc
           - system-clang-asan
           - system-userspace-gcc
           - system-dpdk-gcc
-    steps:
-      - name: Clone test infrastructure
-        uses: actions/checkout@v5
-        with:
-          repository: NicholasBHubbard/ovn-tmt-tests
-          path: test-infra
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman qemu-system-x86 \
-            libvirt-daemon-system libvirt-dev pkg-config genisoimage ansible-core
-          ansible-galaxy collection install ansible.posix community.general
-          pipx install 'tmt[provision-container,provision-virtual]'
-
-      - name: Run tmt
-        working-directory: test-infra
-        run: >-
-          sudo env PATH="$PATH"
-          tmt run --all
-          -e PATH="$PATH"
-          -e OVN_GIT_REPO=${{ github.server_url }}/${{ github.repository }}.git
-          -e OVN_GIT_VERSION=${{ github.event.pull_request.head.sha || github.sha }}
-          plan --name '/plans/ovn-ci/${{ matrix.plan }}'
-          provision --feeling-safe
+        testsuiteflags: ["-100", "101-200", "201-"]
+    uses: ./.github/workflows/tmt-run.yml
+    with:
+      plan: ${{ matrix.plan }}
+      testsuiteflags: ${{ matrix.testsuiteflags }}

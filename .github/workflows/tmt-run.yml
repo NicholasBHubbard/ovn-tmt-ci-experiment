@@ -1,0 +1,52 @@
+name: Run tmt plan
+
+on:
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+      testsuiteflags:
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: Run tmt
+    runs-on: ubuntu-26.04
+    timeout-minutes: 360
+    steps:
+      - name: Clone test infrastructure
+        uses: actions/checkout@v5
+        with:
+          repository: NicholasBHubbard/ovn-tmt-tests
+          path: test-infra
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman qemu-system-x86 \
+            libvirt-daemon-system libvirt-dev pkg-config genisoimage ansible-core
+          ansible-galaxy collection install ansible.posix community.general
+          pipx install 'tmt[provision-container,provision-virtual]'
+
+      - name: Run tmt
+        working-directory: test-infra
+        env:
+          MAKE_CHECK_TESTSUITEFLAGS: ${{ inputs.testsuiteflags }}
+          OVN_GIT_REPO: ${{ github.server_url }}/${{ github.repository }}.git
+          OVN_GIT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
+          PLAN: ${{ inputs.plan }}
+        run: >-
+          sudo env PATH="$PATH"
+          tmt run --all
+          -e PATH="$PATH"
+          -e OVN_GIT_REPO="$OVN_GIT_REPO"
+          -e OVN_GIT_VERSION="$OVN_GIT_VERSION"
+          -e MAKE_CHECK_TESTSUITEFLAGS="$MAKE_CHECK_TESTSUITEFLAGS"
+          plan --name "/plans/ovn-ci/$PLAN"
+          provision --feeling-safe

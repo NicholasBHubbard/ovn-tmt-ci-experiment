@@ -78,3 +78,22 @@ jobs:
     with:
       plan: ${{ matrix.plan }}
       testsuiteflags: ${{ matrix.testsuiteflags }}
+
+  multihost-build:
+    name: multihost basic and artifact build
+    uses: ./.github/workflows/tmt-multihost-run.yml
+    with:
+      plan: basic
+      build-artifact: true
+
+  multihost:
+    name: multihost ${{ matrix.plan }}
+    needs: multihost-build
+    strategy:
+      fail-fast: false
+      matrix:
+        plan:
+          - gateway-nat
+    uses: ./.github/workflows/tmt-multihost-run.yml
+    with:
+      plan: ${{ matrix.plan }}

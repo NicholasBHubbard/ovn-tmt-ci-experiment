@@ -1,4 +1,4 @@
-name: Run tmt plan
+name: Run tmt multihost plan
 
 on:
   workflow_call:
@@ -6,19 +6,19 @@ on:
       plan:
         required: true
         type: string
-      testsuiteflags:
+      build-artifact:
         required: false
-        type: string
-        default: ""
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   run:
-    name: Run tmt
+    name: Run tmt multihost
     runs-on: ubuntu-26.04
-    timeout-minutes: 360
+    timeout-minutes: 60
     steps:
       - name: Clone test infrastructure
         uses: actions/checkout@v5
@@ -34,10 +34,18 @@ jobs:
           ansible-galaxy collection install ansible.posix community.general
           pipx install 'tmt[provision-container,provision-virtual]'
 
-      - name: Run tmt
+      - name: Download OVN artifact
+        if: ${{ !inputs['build-artifact'] }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ovn-multihost-build
+          path: ${{ runner.temp }}/ovn-artifacts
+
+      - name: Run tmt multihost plan
         working-directory: test-infra
         env:
-          MAKE_CHECK_TESTSUITEFLAGS: ${{ inputs.testsuiteflags }}
+          OVN_ARTIFACT_BUILD: ${{ inputs['build-artifact'] }}
+          OVN_ARTIFACT_CACHE_DIR: ${{ runner.temp }}/ovn-artifacts
           OVN_GIT_REPO: >-
             ${{ github.event.pull_request.head.repo.clone_url ||
             github.event.repository.clone_url }}
@@ -47,15 +55,28 @@ jobs:
           sudo env PATH="$PATH"
           tmt run --id "$RUNNER_TEMP/tmt-run" --all
           -e PATH="$PATH"
+          -e OVN_ARTIFACT_BUILD="$OVN_ARTIFACT_BUILD"
+          -e OVN_ARTIFACT_CACHE_DIR="$OVN_ARTIFACT_CACHE_DIR"
+          -e OVN_ARTIFACT_EXPECTED_REVISION="$OVN_GIT_VERSION"
           -e OVN_GIT_REPO="$OVN_GIT_REPO"
           -e OVN_GIT_VERSION="$OVN_GIT_VERSION"
-          -e MAKE_CHECK_TESTSUITEFLAGS="$MAKE_CHECK_TESTSUITEFLAGS"
-          plan --name "/plans/ovn-ci/$PLAN"
+          plan --name "/plans/ovn-multihost/$PLAN"
           provision --feeling-safe
+
+      - name: Upload OVN artifact
+        if: ${{ inputs['build-artifact'] }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ovn-multihost-build
+          path: ${{ runner.temp }}/ovn-artifacts/ovn-multihost.*
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+          compression-level: 0
 
       - name: Upload tmt artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tmt-${{ inputs.plan }}-${{ inputs.testsuiteflags || 'all' }}
+          name: tmt-multihost-${{ inputs.plan }}
           path: ${{ runner.temp }}/tmt-run/**/execute/data

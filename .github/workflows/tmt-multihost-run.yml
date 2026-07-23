@@ -44,22 +44,22 @@ jobs:
       - name: Run tmt multihost plan
         working-directory: test-infra
         env:
-          OVN_ARTIFACT_BUILD: ${{ inputs['build-artifact'] }}
-          OVN_ARTIFACT_CACHE_DIR: ${{ runner.temp }}/ovn-artifacts
-          OVN_GIT_REPO: >-
+          OTT_ARTIFACT_BUILD: ${{ inputs['build-artifact'] }}
+          OTT_ARTIFACT_CACHE_DIR: ${{ runner.temp }}/ovn-artifacts
+          OTT_GIT_REPO: >-
             ${{ github.event.pull_request.head.repo.clone_url ||
             github.event.repository.clone_url }}
-          OVN_GIT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
+          OTT_GIT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
           PLAN: ${{ inputs.plan }}
         run: >-
           sudo env PATH="$PATH"
           tmt run --id "$RUNNER_TEMP/tmt-run" --all
           -e PATH="$PATH"
-          -e OVN_ARTIFACT_BUILD="$OVN_ARTIFACT_BUILD"
-          -e OVN_ARTIFACT_CACHE_DIR="$OVN_ARTIFACT_CACHE_DIR"
-          -e OVN_ARTIFACT_EXPECTED_REVISION="$OVN_GIT_VERSION"
-          -e OVN_GIT_REPO="$OVN_GIT_REPO"
-          -e OVN_GIT_VERSION="$OVN_GIT_VERSION"
+          -e OTT_ARTIFACT_BUILD="$OTT_ARTIFACT_BUILD"
+          -e OTT_ARTIFACT_CACHE_DIR="$OTT_ARTIFACT_CACHE_DIR"
+          -e OTT_ARTIFACT_EXPECTED_REVISION="$OTT_GIT_VERSION"
+          -e OTT_GIT_REPO="$OTT_GIT_REPO"
+          -e OTT_GIT_VERSION="$OTT_GIT_VERSION"
           plan --name "/plans/ovn-multihost/$PLAN"
           provision --feeling-safe
 
